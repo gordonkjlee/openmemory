@@ -6,12 +6,17 @@ on:
     types: [completed]
   workflow_dispatch:
 
+concurrency:
+  group: publish-npm
+  cancel-in-progress: false
+
 jobs:
   publish:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
@@ -56,6 +61,7 @@ jobs:
         run: npm test
 
       - if: steps.release.outputs.found == 'true'
+        name: Publish ${{ steps.release.outputs.tag }}
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
