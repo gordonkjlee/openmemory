@@ -8,7 +8,7 @@
  */
 
 import { parseArgs } from "node:util";
-import { mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -46,6 +46,8 @@ mkdirSync(dataDir, { recursive: true });
 // ---------------------------------------------------------------------------
 
 const dbPath = path.join(dataDir, "memory.db");
+const legacyDbPath = path.join(dataDir, "knowledge.db");
+if (!existsSync(dbPath) && existsSync(legacyDbPath)) renameSync(legacyDbPath, dbPath);
 const db = openDatabase(dbPath);
 applySchema(db);
 
