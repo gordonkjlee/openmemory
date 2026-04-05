@@ -98,5 +98,5 @@ function applyV2(db: Database.Database): void {
   `);
 
   db.pragma("foreign_keys = ON");
-  db.pragma("user_version = 2");
+  db.pragma(`user_version = ${CURRENT_VERSION}`);
 }
