@@ -1,6 +1,6 @@
 /**
  * log-event CLI command — inserts a SessionEvent directly into the database.
- * Used by Claude Code hooks to pipe conversation messages to OpenMemory.
+ * Used by AI client hooks to pipe conversation messages to OpenMemory.
  */
 
 import path from "node:path";
@@ -45,7 +45,7 @@ export function logEvent(args: LogEventArgs): SessionEvent {
 }
 
 // ---------------------------------------------------------------------------
-// Stdin helpers for Claude Code hooks
+// Stdin helpers for AI client hooks
 // ---------------------------------------------------------------------------
 
 /** Known hook payload field names for content extraction. */
@@ -55,7 +55,7 @@ const HOOK_CONTENT_FIELDS: Record<string, string> = {
 };
 
 /**
- * Extract content from a Claude Code hook JSON payload on stdin.
+ * Extract content from an AI client hook JSON payload on stdin.
  * Returns the extracted text, or the raw input if not a known hook format.
  */
 export function extractContentFromHookPayload(raw: string): {
