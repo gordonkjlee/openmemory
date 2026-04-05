@@ -6,7 +6,7 @@
 import path from "node:path";
 import { openDatabase, closeDatabase } from "../db/connection.js";
 import { applySchema } from "../db/schema.js";
-import { getLatestSession, insertEvent } from "../db/sessions.js";
+import { insertEvent } from "../db/sessions.js";
 import type { SessionEvent } from "../types/data.js";
 
 export interface LogEventArgs {
@@ -19,10 +19,11 @@ export interface LogEventArgs {
 }
 
 /**
- * Insert a session event via the CLI.
+ * Insert an event via the CLI.
  * Opens the database, inserts the event, and closes. Stateless.
  *
- * @throws If no sessions exist and no sessionId is provided.
+ * When a sessionId is provided (e.g. from a hook payload), it is stored
+ * as client_session_id. Otherwise both session columns are null.
  */
 export function logEvent(args: LogEventArgs): SessionEvent {
   const dbPath = path.join(args.dataDir, "memory.db");
@@ -31,16 +32,8 @@ export function logEvent(args: LogEventArgs): SessionEvent {
   try {
     applySchema(db);
 
-    const sessionId = args.sessionId ?? getLatestSession(db)?.id;
-
-    if (!sessionId) {
-      throw new Error(
-        "No sessions found. Start the OpenMemory MCP server first to create a session.",
-      );
-    }
-
     return insertEvent(db, {
-      session_id: sessionId,
+      client_session_id: args.sessionId ?? null,
       event_type: args.eventType,
       role: args.role,
       content: args.content,
