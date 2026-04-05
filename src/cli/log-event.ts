@@ -3,7 +3,6 @@
  * Used by Claude Code hooks to pipe conversation messages to OpenMemory.
  */
 
-import { existsSync, renameSync } from "node:fs";
 import path from "node:path";
 import { openDatabase, closeDatabase } from "../db/connection.js";
 import { applySchema } from "../db/schema.js";
@@ -27,8 +26,6 @@ export interface LogEventArgs {
  */
 export function logEvent(args: LogEventArgs): SessionEvent {
   const dbPath = path.join(args.dataDir, "memory.db");
-  const legacyDbPath = path.join(args.dataDir, "knowledge.db");
-  if (!existsSync(dbPath) && existsSync(legacyDbPath)) renameSync(legacyDbPath, dbPath);
   const db = openDatabase(dbPath);
 
   try {
