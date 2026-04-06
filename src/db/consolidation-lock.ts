@@ -18,8 +18,8 @@ export interface LockState {
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Stale lock threshold in milliseconds (5 minutes). */
-const STALE_LOCK_MS = 5 * 60 * 1000;
+/** Stale lock threshold in milliseconds (2 minutes). */
+const STALE_LOCK_MS = 2 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // Lock operations

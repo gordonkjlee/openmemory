@@ -129,22 +129,63 @@ export function linkFactEntity(
 // ---------------------------------------------------------------------------
 
 /** Create or strengthen an entity-to-entity edge. */
+/**
+ * Logarithmic potentiation rate for entity edge strengthening.
+ * Models synaptic LTP: early co-occurrences cause large jumps,
+ * later ones diminish as the edge approaches saturation.
+ *
+ * Formula: new_strength = 1 - 1 / (1 + count * EDGE_POTENTIATION_K)
+ * With K=0.5: 1 co-occurrence → 0.33, 2 → 0.50, 5 → 0.71, 10 → 0.83, 20 → 0.91
+ *
+ * Phase 3: the inference pipeline can adjust this based on
+ * observed correction patterns (parametric feedback).
+ */
+export const EDGE_POTENTIATION_K = 0.5;
+
+/** Create or strengthen an entity-to-entity edge using logarithmic potentiation. */
 export function upsertEntityEdge(
   db: Database.Database,
   fromEntity: string,
   toEntity: string,
   relationship: string,
-  strengthDelta?: number,
 ): void {
-  const delta = strengthDelta ?? 0.1;
   const now = new Date().toISOString();
 
-  db.prepare(
-    `INSERT INTO entity_edges (from_entity, to_entity, relationship, strength, metadata, created_at, last_accessed_at)
-     VALUES (?, ?, ?, ?, NULL, ?, ?)
-     ON CONFLICT (from_entity, to_entity, relationship)
-     DO UPDATE SET strength = MIN(strength + ?, 1.0), last_accessed_at = ?`,
-  ).run(fromEntity, toEntity, relationship, delta, now, now, delta, now);
+  db.transaction(() => {
+    // Try to insert new edge with initial strength
+    const initialStrength = 1 - 1 / (1 + EDGE_POTENTIATION_K); // ~0.33 for K=0.5
+    const inserted = db.prepare(
+      `INSERT OR IGNORE INTO entity_edges
+         (from_entity, to_entity, relationship, strength, metadata, created_at, last_accessed_at)
+       VALUES (?, ?, ?, ?, NULL, ?, ?)`,
+    ).run(fromEntity, toEntity, relationship, initialStrength, now, now);
+
+    if (inserted.changes > 0) return; // new edge created
+
+    // Edge exists — read current strength, compute co-occurrence count from it,
+    // then apply logarithmic curve for the next increment.
+    const row = db.prepare(
+      `SELECT strength FROM entity_edges
+       WHERE from_entity = ? AND to_entity = ? AND relationship = ?`,
+    ).get(fromEntity, toEntity, relationship) as { strength: number } | undefined;
+
+    if (!row) return;
+
+    // Invert the formula to estimate co-occurrence count from current strength:
+    // strength = 1 - 1/(1 + count*K)  →  count = (1/(1-strength) - 1) / K
+    const currentStrength = row.strength;
+    const estimatedCount = currentStrength >= 0.999
+      ? 100 // avoid division by zero at saturation
+      : (1 / (1 - currentStrength) - 1) / EDGE_POTENTIATION_K;
+
+    const newCount = estimatedCount + 1;
+    const newStrength = 1 - 1 / (1 + newCount * EDGE_POTENTIATION_K);
+
+    db.prepare(
+      `UPDATE entity_edges SET strength = ?, last_accessed_at = ?
+       WHERE from_entity = ? AND to_entity = ? AND relationship = ?`,
+    ).run(newStrength, now, fromEntity, toEntity, relationship);
+  })();
 }
 
 /** Get all edges from or to an entity. */

@@ -180,34 +180,41 @@ describe.skipIf(!canLoadSqlite)("entity edges", () => {
     entityB = createEntity(db, { type: "organisation", name: "Acme" });
   });
 
-  it("upsertEntityEdge creates a new edge", () => {
-    upsertEntityEdge(db, entityA.id, entityB.id, "works_at", 0.5);
+  it("upsertEntityEdge creates a new edge with initial log strength", () => {
+    upsertEntityEdge(db, entityA.id, entityB.id, "works_at");
 
     const edges = getEntityEdges(db, entityA.id);
     expect(edges).toHaveLength(1);
     expect(edges[0].from_entity).toBe(entityA.id);
     expect(edges[0].to_entity).toBe(entityB.id);
     expect(edges[0].relationship).toBe("works_at");
-    expect(edges[0].strength).toBe(0.5);
+    // Initial strength: 1 - 1/(1 + 0.5) ≈ 0.333
+    expect(edges[0].strength).toBeCloseTo(0.333, 2);
     expect(edges[0].created_at).toBeTruthy();
   });
 
-  it("upsertEntityEdge strengthens existing edge", () => {
-    upsertEntityEdge(db, entityA.id, entityB.id, "works_at", 0.3);
-    upsertEntityEdge(db, entityA.id, entityB.id, "works_at", 0.2);
+  it("upsertEntityEdge follows logarithmic potentiation curve", () => {
+    // Each call increments the estimated co-occurrence count.
+    // K=0.5: count 1 → 0.33, count 2 → 0.50, count 3 → 0.60
+    upsertEntityEdge(db, entityA.id, entityB.id, "works_at"); // count=1 → ~0.33
+    upsertEntityEdge(db, entityA.id, entityB.id, "works_at"); // count=2 → ~0.50
+    upsertEntityEdge(db, entityA.id, entityB.id, "works_at"); // count=3 → ~0.60
 
     const edges = getEntityEdges(db, entityA.id);
     expect(edges).toHaveLength(1);
-    expect(edges[0].strength).toBeCloseTo(0.5, 5);
+    expect(edges[0].strength).toBeCloseTo(0.6, 1);
   });
 
-  it("upsertEntityEdge caps strength at 1.0", () => {
-    upsertEntityEdge(db, entityA.id, entityB.id, "works_at", 0.8);
-    upsertEntityEdge(db, entityA.id, entityB.id, "works_at", 0.5);
+  it("upsertEntityEdge approaches but never exceeds 1.0", () => {
+    // Many co-occurrences should approach 1.0 asymptotically
+    for (let i = 0; i < 50; i++) {
+      upsertEntityEdge(db, entityA.id, entityB.id, "works_at");
+    }
 
     const edges = getEntityEdges(db, entityA.id);
     expect(edges).toHaveLength(1);
-    expect(edges[0].strength).toBe(1.0);
+    expect(edges[0].strength).toBeGreaterThan(0.95);
+    expect(edges[0].strength).toBeLessThanOrEqual(1.0);
   });
 
   it("getEntityEdges returns edges from/to an entity", () => {
@@ -355,9 +362,9 @@ describe.skipIf(!canLoadSqlite)("consolidation lock", () => {
     expect(state!.holder).toBe("worker-1");
   });
 
-  it("acquireLock takes over stale lock (>5 min old)", () => {
-    // Insert a lock row with a timestamp more than 5 minutes in the past
-    const staleTime = new Date(Date.now() - 6 * 60 * 1000).toISOString();
+  it("acquireLock takes over stale lock (>2 min old)", () => {
+    // Insert a lock row with a timestamp more than 2 minutes in the past
+    const staleTime = new Date(Date.now() - 3 * 60 * 1000).toISOString();
     db.prepare(
       `INSERT INTO consolidation_lock (id, holder, started_at) VALUES (1, ?, ?)`,
     ).run("stale-worker", staleTime);
