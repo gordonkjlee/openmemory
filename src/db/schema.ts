@@ -5,8 +5,6 @@
 
 import type Database from "better-sqlite3";
 
-const CURRENT_VERSION = 4;
-
 /** Read the current schema version from the database. */
 export function getSchemaVersion(db: Database.Database): number {
   const row = db.pragma("user_version", { simple: true });
@@ -199,7 +197,7 @@ function applyV4(db: Database.Database): void {
     );
 
     -- FTS5 external content sync triggers.
-    -- Only INSERT and DELETE are needed: facts are immutable (ADR-4) so the
+    -- Only INSERT and DELETE are needed: facts are immutable so the
     -- FTS5-indexed columns (content, domain, subdomain) are never UPDATEd.
     -- supersedeFact only updates status/is_latest/valid_until, which are not
     -- in the FTS5 index. DELETE trigger is a safety net — facts are never
