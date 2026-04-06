@@ -264,6 +264,16 @@ describe.skipIf(!canLoadSqlite)("supersession", () => {
     expect(domainFacts).toHaveLength(1);
     expect(domainFacts[0].id).toBe(c.id);
   });
+
+  it("supersedeFact throws when oldId does not exist", () => {
+    expect(() =>
+      supersedeFact(db, "nonexistent-id", {
+        content: "Replacement",
+        domain: "profile",
+        source_type: "conversation",
+      }),
+    ).toThrow("Cannot supersede fact 'nonexistent-id': not found");
+  });
 });
 
 describe.skipIf(!canLoadSqlite)("keyword search (FTS5)", () => {

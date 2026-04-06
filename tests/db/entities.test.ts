@@ -21,6 +21,7 @@ const { applySchema } = canLoadSqlite
 const {
   createEntity,
   findEntity,
+  findEntityByCanonical,
   findOrCreateEntity,
   linkFactEntity,
   upsertEntityEdge,
@@ -98,6 +99,17 @@ describe.skipIf(!canLoadSqlite)("entities", () => {
 
   it("findEntity returns null when not found", () => {
     expect(findEntity(db, "Nobody")).toBeNull();
+  });
+
+  it("findEntityByCanonical matches exact canonical name (no normalisation)", () => {
+    createEntity(db, { type: "person", name: "  Gordon Lee  " });
+
+    // Exact canonical match works
+    expect(findEntityByCanonical(db, "gordon lee")).not.toBeNull();
+
+    // Un-normalised input does NOT match — caller must normalise
+    expect(findEntityByCanonical(db, "Gordon Lee")).toBeNull();
+    expect(findEntityByCanonical(db, "  gordon lee  ")).toBeNull();
   });
 
   it("findOrCreateEntity returns existing entity if found", () => {

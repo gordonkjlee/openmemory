@@ -152,11 +152,15 @@ export function supersedeFact(
   const captureContext = newFact.capture_context ?? null;
 
   const result = db.transaction(() => {
-    db.prepare(
+    const updated = db.prepare(
       `UPDATE facts
        SET status = 'superseded', superseded_by = ?, is_latest = 0, valid_until = ?
        WHERE id = ?`,
     ).run(newId, now, oldId);
+
+    if (updated.changes === 0) {
+      throw new Error(`Cannot supersede fact '${oldId}': not found`);
+    }
 
     db.prepare(
       `INSERT INTO facts

@@ -136,6 +136,9 @@ function applyV3(db: Database.Database): void {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_session_facts_hash
       ON session_facts(session_id, content_hash);
 
+    CREATE INDEX IF NOT EXISTS idx_session_facts_unclaimed
+      ON session_facts(created_at) WHERE consolidation_id IS NULL;
+
     CREATE TABLE IF NOT EXISTS session_fact_sources (
       session_fact_id TEXT NOT NULL,
       event_id TEXT NOT NULL,
@@ -195,16 +198,27 @@ function applyV4(db: Database.Database): void {
       content=facts, content_rowid=rowid
     );
 
+    -- FTS5 external content sync triggers.
+    -- Only INSERT and DELETE are needed: facts are immutable (ADR-4) so the
+    -- FTS5-indexed columns (content, domain, subdomain) are never UPDATEd.
+    -- supersedeFact only updates status/is_latest/valid_until, which are not
+    -- in the FTS5 index. DELETE trigger is a safety net — facts are never
+    -- deleted in normal operation, but if one were, FTS5 must stay in sync.
     CREATE TRIGGER IF NOT EXISTS facts_ai AFTER INSERT ON facts BEGIN
       INSERT INTO facts_fts(rowid, content, domain, subdomain)
       VALUES (new.rowid, new.content, new.domain, new.subdomain);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS facts_ad AFTER DELETE ON facts BEGIN
+      INSERT INTO facts_fts(facts_fts, rowid, content, domain, subdomain)
+      VALUES ('delete', old.rowid, old.content, old.domain, old.subdomain);
     END;
 
     CREATE TABLE IF NOT EXISTS entities (
       id TEXT PRIMARY KEY,
       type TEXT NOT NULL,
       name TEXT NOT NULL,
-      canonical_name TEXT,
+      canonical_name TEXT NOT NULL,
       metadata TEXT,
       created_at TEXT NOT NULL,
       access_count INTEGER NOT NULL DEFAULT 0,
@@ -262,5 +276,5 @@ function applyV4(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_entity_edges_to ON entity_edges(to_entity);
   `);
 
-  db.pragma(`user_version = ${CURRENT_VERSION}`);
+  db.pragma("user_version = 4");
 }
