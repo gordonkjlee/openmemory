@@ -5,7 +5,7 @@
 
 import type Database from "better-sqlite3";
 
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = 4;
 
 /** Read the current schema version from the database. */
 export function getSchemaVersion(db: Database.Database): number {
@@ -22,6 +22,12 @@ export function applySchema(db: Database.Database): void {
   }
   if (version < 2) {
     applyV2(db);
+  }
+  if (version < 3) {
+    applyV3(db);
+  }
+  if (version < 4) {
+    applyV4(db);
   }
 }
 
@@ -98,5 +104,163 @@ function applyV2(db: Database.Database): void {
   `);
 
   db.pragma("foreign_keys = ON");
+  db.pragma("user_version = 2");
+}
+
+// ---------------------------------------------------------------------------
+// Schema version 3 — session_facts staging + domains + session columns + provenance + lock
+// ---------------------------------------------------------------------------
+
+function applyV3(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS session_facts (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      content_hash TEXT NOT NULL,
+      source_origin TEXT NOT NULL DEFAULT 'explicit'
+        CHECK (source_origin IN ('explicit', 'inferred')),
+      source_event_id TEXT,
+      domain_hint TEXT,
+      confidence REAL,
+      importance REAL,
+      source_tool TEXT,
+      capture_context TEXT,
+      consolidation_id TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_session_facts_session
+      ON session_facts(session_id);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_session_facts_hash
+      ON session_facts(session_id, content_hash);
+
+    CREATE TABLE IF NOT EXISTS session_fact_sources (
+      session_fact_id TEXT NOT NULL,
+      event_id TEXT NOT NULL,
+      relevance REAL NOT NULL DEFAULT 1.0,
+      extraction_type TEXT NOT NULL DEFAULT 'contextual'
+        CHECK (extraction_type IN ('primary', 'corroborating', 'contextual')),
+      PRIMARY KEY (session_fact_id, event_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS domains (
+      name TEXT PRIMARY KEY,
+      subdomains TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS consolidation_lock (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      holder TEXT NOT NULL,
+      started_at TEXT NOT NULL
+    );
+  `);
+
+  db.pragma("user_version = 3");
+}
+
+// ---------------------------------------------------------------------------
+// Schema version 4 — Knowledge layer: facts + FTS5 + entities + graph + sources + consolidations
+// ---------------------------------------------------------------------------
+
+function applyV4(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS facts (
+      id TEXT PRIMARY KEY,
+      content TEXT NOT NULL,
+      domain TEXT NOT NULL,
+      subdomain TEXT,
+      confidence REAL NOT NULL DEFAULT 0.7,
+      importance REAL NOT NULL DEFAULT 0.5,
+      source_type TEXT NOT NULL,
+      source_tool TEXT,
+      source_id TEXT,
+      status TEXT NOT NULL DEFAULT 'active'
+        CHECK (status IN ('active', 'superseded', 'rejected')),
+      superseded_by TEXT,
+      is_latest INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      valid_from TEXT,
+      valid_until TEXT,
+      system_retired_at TEXT,
+      session_id TEXT,
+      capture_context TEXT,
+      access_count INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS facts_fts USING fts5(
+      content, domain, subdomain,
+      content=facts, content_rowid=rowid
+    );
+
+    CREATE TRIGGER IF NOT EXISTS facts_ai AFTER INSERT ON facts BEGIN
+      INSERT INTO facts_fts(rowid, content, domain, subdomain)
+      VALUES (new.rowid, new.content, new.domain, new.subdomain);
+    END;
+
+    CREATE TABLE IF NOT EXISTS entities (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      name TEXT NOT NULL,
+      canonical_name TEXT,
+      metadata TEXT,
+      created_at TEXT NOT NULL,
+      access_count INTEGER NOT NULL DEFAULT 0,
+      last_accessed_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS fact_entities (
+      fact_id TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      relationship TEXT NOT NULL,
+      PRIMARY KEY (fact_id, entity_id, relationship)
+    );
+
+    CREATE TABLE IF NOT EXISTS entity_edges (
+      from_entity TEXT NOT NULL,
+      to_entity TEXT NOT NULL,
+      relationship TEXT NOT NULL,
+      strength REAL NOT NULL DEFAULT 1.0,
+      metadata TEXT,
+      created_at TEXT NOT NULL,
+      last_accessed_at TEXT,
+      PRIMARY KEY (from_entity, to_entity, relationship)
+    );
+
+    CREATE TABLE IF NOT EXISTS sources (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      tool_id TEXT,
+      timestamp TEXT NOT NULL,
+      raw_content TEXT,
+      metadata TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS consolidations (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      facts_in INTEGER NOT NULL,
+      facts_graduated INTEGER NOT NULL,
+      facts_rejected INTEGER NOT NULL,
+      entities_created INTEGER NOT NULL DEFAULT 0,
+      entities_linked INTEGER NOT NULL DEFAULT 0,
+      supersessions INTEGER NOT NULL DEFAULT 0,
+      summary TEXT,
+      open_threads TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_facts_domain ON facts(domain, subdomain);
+    CREATE INDEX IF NOT EXISTS idx_facts_status ON facts(status, is_latest);
+    CREATE INDEX IF NOT EXISTS idx_facts_session ON facts(session_id);
+    CREATE INDEX IF NOT EXISTS idx_fact_entities_entity ON fact_entities(entity_id);
+    CREATE INDEX IF NOT EXISTS idx_entities_type ON entities(type);
+    CREATE INDEX IF NOT EXISTS idx_entities_canonical ON entities(canonical_name);
+    CREATE INDEX IF NOT EXISTS idx_entity_edges_from ON entity_edges(from_entity);
+    CREATE INDEX IF NOT EXISTS idx_entity_edges_to ON entity_edges(to_entity);
+  `);
+
   db.pragma(`user_version = ${CURRENT_VERSION}`);
 }
