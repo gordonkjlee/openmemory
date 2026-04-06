@@ -234,7 +234,7 @@ function applyV4(db: Database.Database): void {
       from_entity TEXT NOT NULL,
       to_entity TEXT NOT NULL,
       relationship TEXT NOT NULL,
-      strength REAL NOT NULL DEFAULT 1.0,
+      strength REAL NOT NULL,
       metadata TEXT,
       created_at TEXT NOT NULL,
       last_accessed_at TEXT,

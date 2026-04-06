@@ -128,7 +128,7 @@ export interface Entity {
   id: string;
   type: string;
   name: string;
-  canonical_name: string | null;
+  canonical_name: string;
   metadata: Record<string, unknown> | null;
   created_at: string;
   access_count: number;

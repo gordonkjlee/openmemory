@@ -212,7 +212,8 @@ export function supersedeFact(
   return result;
 }
 
-/** Keyword search via FTS5. Returns facts with BM25 rank. */
+/** Keyword search via FTS5. Returns facts with BM25 rank.
+ *  @throws {SqliteError} on malformed FTS5 syntax (unbalanced quotes, stray operators). Callers should sanitise or catch. */
 export function keywordSearch(
   db: Database.Database,
   query: string,

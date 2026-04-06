@@ -21,7 +21,8 @@ export interface NewEntity {
 // Entities
 // ---------------------------------------------------------------------------
 
-/** Find an entity by name, optionally filtered by type. Uses canonical_name for matching. */
+/** Find an entity by name, optionally filtered by type. Uses canonical_name for matching.
+ *  Without type, returns first match — non-deterministic if multiple entities share a canonical name. */
 export function findEntity(
   db: Database.Database,
   name: string,
