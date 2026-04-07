@@ -25,6 +25,7 @@ const {
   getFactsByEntity,
   supersedeFact,
   keywordSearch,
+  sanitiseFtsQuery,
   incrementFactAccess,
 } = canLoadSqlite
   ? await import("../../src/db/facts.js")
@@ -334,5 +335,59 @@ describe.skipIf(!canLoadSqlite)("access tracking", () => {
     incrementFactAccess(db, fact.id);
     const after2 = getFact(db, fact.id);
     expect(after2!.access_count).toBe(2);
+  });
+});
+
+describe.skipIf(!canLoadSqlite)("sanitiseFtsQuery", () => {
+  it("wraps terms in double quotes", () => {
+    expect(sanitiseFtsQuery("coffee tea")).toBe('"coffee" "tea"');
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(sanitiseFtsQuery("")).toBe("");
+    expect(sanitiseFtsQuery("   ")).toBe("");
+  });
+
+  it("strips stray double quotes from terms", () => {
+    expect(sanitiseFtsQuery('"unclosed')).toBe('"unclosed"');
+    expect(sanitiseFtsQuery('hello "world')).toBe('"hello" "world"');
+  });
+
+  it("neutralises FTS5 operators", () => {
+    expect(sanitiseFtsQuery("NOT coffee")).toBe('"NOT" "coffee"');
+    expect(sanitiseFtsQuery("tea AND coffee")).toBe('"tea" "AND" "coffee"');
+    expect(sanitiseFtsQuery("coffee*")).toBe('"coffee*"');
+  });
+
+  it("handles single term", () => {
+    expect(sanitiseFtsQuery("penicillin")).toBe('"penicillin"');
+  });
+});
+
+describe.skipIf(!canLoadSqlite)("bitemporal valid_from", () => {
+  it("insertFact with valid_from: null stores null (unknown validity start)", () => {
+    const fact = insertFact(db, {
+      content: "Allergic to penicillin",
+      domain: "medical",
+      source_type: "import",
+      valid_from: null,
+    });
+
+    expect(fact.valid_from).toBeNull();
+
+    const retrieved = getFact(db, fact.id);
+    expect(retrieved!.valid_from).toBeNull();
+  });
+
+  it("insertFact without valid_from defaults to now", () => {
+    const before = new Date().toISOString();
+    const fact = insertFact(db, {
+      content: "Lives in London",
+      domain: "profile",
+      source_type: "conversation",
+    });
+
+    expect(fact.valid_from).not.toBeNull();
+    expect(fact.valid_from! >= before).toBe(true);
   });
 });
