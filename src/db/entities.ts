@@ -49,7 +49,8 @@ export function findEntity(
   };
 }
 
-/** Find an entity by canonical name. */
+/** Find an entity by exact canonical name. No normalisation applied — caller must lowercase/trim.
+ *  Without a type filter, non-deterministic if multiple entities share a canonical name. */
 export function findEntityByCanonical(
   db: Database.Database,
   canonicalName: string,
@@ -68,7 +69,8 @@ export function findEntityByCanonical(
   };
 }
 
-/** Create an entity. Sets canonical_name = lower(trim(name)). */
+/** Create an entity. Sets canonical_name = lower(trim(name)).
+ *  Throws on duplicate (canonical_name, type) — use findOrCreateEntity for upsert. */
 export function createEntity(
   db: Database.Database,
   entity: NewEntity,
@@ -139,13 +141,14 @@ export function linkFactEntity(
  * Formula: new_strength = old_strength + (1 - old_strength) * alpha
  * With alpha=0.3: step 1 → 0.30, 2 → 0.51, 3 → 0.66, 5 → 0.83, 10 → 0.97
  *
- * Monotonically increasing by construction — no precision loss.
+ * Monotonically increasing by construction — no practical precision concern at expected iteration counts.
  * Phase 3: the inference pipeline can adjust alpha based on observed
  * correction patterns (parametric feedback).
  */
 export const EDGE_POTENTIATION_ALPHA = 0.3;
 
-/** Create or strengthen an entity-to-entity edge using saturating potentiation. */
+/** Create or strengthen an entity-to-entity edge using saturating potentiation.
+ *  Caller must ensure both entity IDs exist (no FK enforcement). */
 export function upsertEntityEdge(
   db: Database.Database,
   fromEntity: string,

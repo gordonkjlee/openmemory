@@ -107,6 +107,9 @@ function applyV2(db: Database.Database): void {
 
 // ---------------------------------------------------------------------------
 // Schema version 3 — session_facts + provenance + domains + consolidation lock
+// No FOREIGN KEY constraints on v3/v4 tables. FKs were removed in v2 for
+// flexibility with hook-sourced events. Application layer enforces referential
+// integrity via findOrCreateEntity, claimForConsolidation, etc.
 // ---------------------------------------------------------------------------
 
 function applyV3(db: Database.Database): void {
@@ -241,6 +244,7 @@ function applyV4(db: Database.Database): void {
       PRIMARY KEY (from_entity, to_entity, relationship)
     );
 
+    -- Phase 2: source provenance records. No data access module yet.
     CREATE TABLE IF NOT EXISTS sources (
       id TEXT PRIMARY KEY,
       type TEXT NOT NULL,
@@ -252,7 +256,7 @@ function applyV4(db: Database.Database): void {
 
     CREATE TABLE IF NOT EXISTS consolidations (
       id TEXT PRIMARY KEY,
-      session_id TEXT NOT NULL,
+      session_id TEXT,
       facts_in INTEGER NOT NULL,
       facts_graduated INTEGER NOT NULL,
       facts_rejected INTEGER NOT NULL,

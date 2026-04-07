@@ -51,7 +51,10 @@ export function acquireLock(db: Database.Database, holder: string): boolean {
     if (!existing) return false;
 
     if (existing.holder === holder) {
-      // We already hold the lock
+      // We already hold the lock — refresh timestamp to prevent stale detection
+      db.prepare(
+        `UPDATE consolidation_lock SET started_at = ? WHERE id = 1`,
+      ).run(now);
       return true;
     }
 

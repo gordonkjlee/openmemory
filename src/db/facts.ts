@@ -29,7 +29,8 @@ export interface NewFact {
 // Facts
 // ---------------------------------------------------------------------------
 
-/** Insert a graduated fact. Returns the created Fact. */
+/** Insert a graduated fact. Returns the created Fact.
+ *  valid_from defaults to now if not provided. Pass null explicitly for unknown validity start (e.g., historical imports). */
 export function insertFact(db: Database.Database, fact: NewFact): Fact {
   const id = randomUUID();
   const now = new Date().toISOString();
@@ -38,7 +39,7 @@ export function insertFact(db: Database.Database, fact: NewFact): Fact {
   const subdomain = fact.subdomain ?? null;
   const sourceTool = fact.source_tool ?? null;
   const sourceId = fact.source_id ?? null;
-  const validFrom = fact.valid_from ?? now;
+  const validFrom = fact.valid_from !== undefined ? fact.valid_from : now;
   const sessionId = fact.session_id ?? null;
   const captureContext = fact.capture_context ?? null;
 
@@ -216,8 +217,19 @@ export function supersedeFact(
   return result;
 }
 
+/**
+ * Strip FTS5 operators from a query string so it can be safely passed to MATCH.
+ * Wraps each whitespace-delimited term in double quotes to force literal matching.
+ * Returns empty string if input is empty/whitespace-only.
+ */
+export function sanitiseFtsQuery(query: string): string {
+  const terms = query.trim().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return "";
+  return terms.map((t) => `"${t.replace(/"/g, "")}"`).join(" ");
+}
+
 /** Keyword search via FTS5. Returns facts with BM25 rank.
- *  @throws {SqliteError} on malformed FTS5 syntax (unbalanced quotes, stray operators). Callers should sanitise or catch. */
+ *  @throws {SqliteError} on malformed FTS5 syntax. Use sanitiseFtsQuery for untrusted input. */
 export function keywordSearch(
   db: Database.Database,
   query: string,
