@@ -106,7 +106,7 @@ function applyV2(db: Database.Database): void {
 }
 
 // ---------------------------------------------------------------------------
-// Schema version 3 — session_facts staging + domains + session columns + provenance + lock
+// Schema version 3 — session_facts + provenance + domains + consolidation lock
 // ---------------------------------------------------------------------------
 
 function applyV3(db: Database.Database): void {
