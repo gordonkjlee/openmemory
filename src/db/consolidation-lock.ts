@@ -62,11 +62,12 @@ export function acquireLock(db: Database.Database, holder: string): boolean {
     const elapsed =
       new Date(now).getTime() - new Date(existing.started_at).getTime();
     if (elapsed > STALE_LOCK_MS) {
-      // Stale — take over
-      db.prepare(
-        `UPDATE consolidation_lock SET holder = ?, started_at = ? WHERE id = 1`,
-      ).run(holder, now);
-      return true;
+      // Stale — take over (optimistic: verify holder+timestamp unchanged since SELECT)
+      const taken = db.prepare(
+        `UPDATE consolidation_lock SET holder = ?, started_at = ?
+         WHERE id = 1 AND holder = ? AND started_at = ?`,
+      ).run(holder, now, existing.holder, existing.started_at);
+      return taken.changes > 0;
     }
 
     return false;

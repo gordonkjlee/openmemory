@@ -30,7 +30,7 @@ export interface Session {
 /** A consolidation run over session facts. Can happen multiple times per session. */
 export interface Consolidation {
   id: string;
-  session_id: string;
+  session_id: string | null;
   facts_in: number;
   facts_graduated: number;
   facts_rejected: number;

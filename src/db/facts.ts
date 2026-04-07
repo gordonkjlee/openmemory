@@ -140,7 +140,9 @@ export function getFactsByEntity(
   return rows.map((row) => ({ ...row, is_latest: row.is_latest === 1 }));
 }
 
-/** Supersede a fact: mark old as superseded, insert new. Returns the new Fact. */
+/** Supersede a fact: mark old as superseded, insert new. Returns the new Fact.
+ *  valid_from on the replacement is always set to now — the replacement becomes true at supersession time.
+ *  Throws if oldId does not exist. */
 export function supersedeFact(
   db: Database.Database,
   oldId: string,
@@ -220,6 +222,8 @@ export function supersedeFact(
 /**
  * Strip FTS5 operators from a query string so it can be safely passed to MATCH.
  * Wraps each whitespace-delimited term in double quotes to force literal matching.
+ * Note: this is per-term matching, not phrase matching. "hiking in mountains"
+ * becomes three separate term matches, not a phrase.
  * Returns empty string if input is empty/whitespace-only.
  */
 export function sanitiseFtsQuery(query: string): string {
