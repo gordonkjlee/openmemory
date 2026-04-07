@@ -72,11 +72,12 @@ export function acquireLock(db: Database.Database, holder: string): boolean {
   return result;
 }
 
-/** Release the lock. Only releases if the holder matches. */
-export function releaseLock(db: Database.Database, holder: string): void {
-  db.prepare(
+/** Release the lock. Returns true if released, false if holder didn't match. */
+export function releaseLock(db: Database.Database, holder: string): boolean {
+  const result = db.prepare(
     `DELETE FROM consolidation_lock WHERE id = 1 AND holder = ?`,
   ).run(holder);
+  return result.changes > 0;
 }
 
 /** Check if a lock exists and return its state. */

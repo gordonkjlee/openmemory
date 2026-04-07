@@ -72,7 +72,7 @@ export interface SessionFact {
   id: string;
   session_id: string;
   content: string;
-  /** SHA-256 of content for intra-session dedup (pattern separation). */
+  /** SHA-256 of content for intra-session dedup. */
   content_hash: string;
   /** Who created this: AI via capture_fact ('explicit') or server via event extraction ('inferred'). */
   source_origin: "explicit" | "inferred";

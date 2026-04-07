@@ -96,16 +96,18 @@ export function createEntity(
   };
 }
 
-/** Find or create an entity. Returns existing if found by canonical name + type. */
+/** Find or create an entity. Uses UNIQUE(canonical_name, type) constraint for safety. */
 export function findOrCreateEntity(
   db: Database.Database,
   entity: NewEntity,
 ): { entity: Entity; created: boolean } {
-  const existing = findEntity(db, entity.name, entity.type);
-  if (existing) return { entity: existing, created: false };
+  return db.transaction(() => {
+    const existing = findEntity(db, entity.name, entity.type);
+    if (existing) return { entity: existing, created: false };
 
-  const created = createEntity(db, entity);
-  return { entity: created, created: true };
+    const created = createEntity(db, entity);
+    return { entity: created, created: true };
+  })();
 }
 
 // ---------------------------------------------------------------------------
@@ -129,21 +131,21 @@ export function linkFactEntity(
 // Entity edges
 // ---------------------------------------------------------------------------
 
-/** Create or strengthen an entity-to-entity edge. */
 /**
- * Logarithmic potentiation rate for entity edge strengthening.
- * Models synaptic LTP: early co-occurrences cause large jumps,
- * later ones diminish as the edge approaches saturation.
+ * Approach rate for entity edge strengthening.
+ * Inspired by LTP saturation: early co-occurrences cause large jumps,
+ * later ones diminish as the edge approaches 1.0.
  *
- * Formula: new_strength = 1 - 1 / (1 + count * EDGE_POTENTIATION_K)
- * With K=0.5: 1 co-occurrence → 0.33, 2 → 0.50, 5 → 0.71, 10 → 0.83, 20 → 0.91
+ * Formula: new_strength = old_strength + (1 - old_strength) * alpha
+ * With alpha=0.3: step 1 → 0.30, 2 → 0.51, 3 → 0.66, 5 → 0.83, 10 → 0.97
  *
- * Phase 3: the inference pipeline can adjust this based on
- * observed correction patterns (parametric feedback).
+ * Monotonically increasing by construction — no precision loss.
+ * Phase 3: the inference pipeline can adjust alpha based on observed
+ * correction patterns (parametric feedback).
  */
-export const EDGE_POTENTIATION_K = 0.5;
+export const EDGE_POTENTIATION_ALPHA = 0.3;
 
-/** Create or strengthen an entity-to-entity edge using logarithmic potentiation. */
+/** Create or strengthen an entity-to-entity edge using saturating potentiation. */
 export function upsertEntityEdge(
   db: Database.Database,
   fromEntity: string,
@@ -152,41 +154,19 @@ export function upsertEntityEdge(
 ): void {
   const now = new Date().toISOString();
 
-  db.transaction(() => {
-    // Try to insert new edge with initial strength
-    const initialStrength = 1 - 1 / (1 + EDGE_POTENTIATION_K); // ~0.33 for K=0.5
-    const inserted = db.prepare(
-      `INSERT OR IGNORE INTO entity_edges
-         (from_entity, to_entity, relationship, strength, metadata, created_at, last_accessed_at)
-       VALUES (?, ?, ?, ?, NULL, ?, ?)`,
-    ).run(fromEntity, toEntity, relationship, initialStrength, now, now);
-
-    if (inserted.changes > 0) return; // new edge created
-
-    // Edge exists — read current strength, compute co-occurrence count from it,
-    // then apply logarithmic curve for the next increment.
-    const row = db.prepare(
-      `SELECT strength FROM entity_edges
-       WHERE from_entity = ? AND to_entity = ? AND relationship = ?`,
-    ).get(fromEntity, toEntity, relationship) as { strength: number } | undefined;
-
-    if (!row) return;
-
-    // Invert the formula to estimate co-occurrence count from current strength:
-    // strength = 1 - 1/(1 + count*K)  →  count = (1/(1-strength) - 1) / K
-    const currentStrength = row.strength;
-    const estimatedCount = currentStrength >= 0.999
-      ? 100 // avoid division by zero at saturation
-      : (1 / (1 - currentStrength) - 1) / EDGE_POTENTIATION_K;
-
-    const newCount = estimatedCount + 1;
-    const newStrength = 1 - 1 / (1 + newCount * EDGE_POTENTIATION_K);
-
-    db.prepare(
-      `UPDATE entity_edges SET strength = ?, last_accessed_at = ?
-       WHERE from_entity = ? AND to_entity = ? AND relationship = ?`,
-    ).run(newStrength, now, fromEntity, toEntity, relationship);
-  })();
+  db.prepare(
+    `INSERT INTO entity_edges
+       (from_entity, to_entity, relationship, strength, metadata, created_at, last_accessed_at)
+     VALUES (?, ?, ?, ?, NULL, ?, ?)
+     ON CONFLICT (from_entity, to_entity, relationship)
+     DO UPDATE SET
+       strength = strength + (1.0 - strength) * ?,
+       last_accessed_at = ?`,
+  ).run(
+    fromEntity, toEntity, relationship,
+    EDGE_POTENTIATION_ALPHA, now, now,
+    EDGE_POTENTIATION_ALPHA, now,
+  );
 }
 
 /** Get all edges from or to an entity. */

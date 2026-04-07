@@ -192,7 +192,7 @@ describe.skipIf(!canLoadSqlite)("entity edges", () => {
     entityB = createEntity(db, { type: "organisation", name: "Acme" });
   });
 
-  it("upsertEntityEdge creates a new edge with initial log strength", () => {
+  it("upsertEntityEdge creates a new edge with initial strength", () => {
     upsertEntityEdge(db, entityA.id, entityB.id, "works_at");
 
     const edges = getEntityEdges(db, entityA.id);
@@ -200,33 +200,33 @@ describe.skipIf(!canLoadSqlite)("entity edges", () => {
     expect(edges[0].from_entity).toBe(entityA.id);
     expect(edges[0].to_entity).toBe(entityB.id);
     expect(edges[0].relationship).toBe("works_at");
-    // Initial strength: 1 - 1/(1 + 0.5) ≈ 0.333
-    expect(edges[0].strength).toBeCloseTo(0.333, 2);
+    // Initial: 0 + (1 - 0) * 0.3 = 0.3
+    expect(edges[0].strength).toBeCloseTo(0.3, 5);
     expect(edges[0].created_at).toBeTruthy();
   });
 
-  it("upsertEntityEdge follows logarithmic potentiation curve", () => {
-    // Each call increments the estimated co-occurrence count.
-    // K=0.5: count 1 → 0.33, count 2 → 0.50, count 3 → 0.60
-    upsertEntityEdge(db, entityA.id, entityB.id, "works_at"); // count=1 → ~0.33
-    upsertEntityEdge(db, entityA.id, entityB.id, "works_at"); // count=2 → ~0.50
-    upsertEntityEdge(db, entityA.id, entityB.id, "works_at"); // count=3 → ~0.60
+  it("upsertEntityEdge follows saturating potentiation curve", () => {
+    // alpha=0.3: step 1 → 0.30, step 2 → 0.51, step 3 → 0.657
+    upsertEntityEdge(db, entityA.id, entityB.id, "works_at");
+    upsertEntityEdge(db, entityA.id, entityB.id, "works_at");
+    upsertEntityEdge(db, entityA.id, entityB.id, "works_at");
 
     const edges = getEntityEdges(db, entityA.id);
     expect(edges).toHaveLength(1);
-    expect(edges[0].strength).toBeCloseTo(0.6, 1);
+    // 0.3 → 0.3 + 0.7*0.3 = 0.51 → 0.51 + 0.49*0.3 = 0.657
+    expect(edges[0].strength).toBeCloseTo(0.657, 3);
   });
 
-  it("upsertEntityEdge approaches but never exceeds 1.0", () => {
-    // Many co-occurrences should approach 1.0 asymptotically
+  it("upsertEntityEdge is monotonically increasing and approaches 1.0", () => {
+    let prevStrength = 0;
     for (let i = 0; i < 50; i++) {
       upsertEntityEdge(db, entityA.id, entityB.id, "works_at");
+      const edges = getEntityEdges(db, entityA.id);
+      expect(edges[0].strength).toBeGreaterThan(prevStrength);
+      prevStrength = edges[0].strength;
     }
-
-    const edges = getEntityEdges(db, entityA.id);
-    expect(edges).toHaveLength(1);
-    expect(edges[0].strength).toBeGreaterThan(0.95);
-    expect(edges[0].strength).toBeLessThanOrEqual(1.0);
+    expect(prevStrength).toBeGreaterThan(0.99);
+    expect(prevStrength).toBeLessThan(1.0);
   });
 
   it("getEntityEdges returns edges from/to an entity", () => {

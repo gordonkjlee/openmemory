@@ -135,6 +135,7 @@ export function getUnconsolidatedFacts(
 
 /**
  * Atomically claim all unclaimed session facts for a consolidation run.
+ * Caller must hold the consolidation lock — see consolidation-lock.ts.
  * Returns the number of facts claimed.
  */
 export function claimForConsolidation(

@@ -42,7 +42,7 @@ export function insertFact(db: Database.Database, fact: NewFact): Fact {
   const sessionId = fact.session_id ?? null;
   const captureContext = fact.capture_context ?? null;
 
-  db.prepare(
+  const result = db.prepare(
     `INSERT INTO facts
        (id, content, domain, subdomain, confidence, importance,
         source_type, source_tool, source_id, status, superseded_by,
@@ -65,6 +65,10 @@ export function insertFact(db: Database.Database, fact: NewFact): Fact {
     sessionId,
     captureContext,
   );
+
+  if (result.changes === 0) {
+    throw new Error(`Failed to insert fact '${id}'`);
+  }
 
   return {
     id,

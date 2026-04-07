@@ -290,9 +290,9 @@ describe.skipIf(!canLoadSqlite)("keyword search (FTS5)", () => {
     });
 
     const results = keywordSearch(db, "hiking mountains");
-    expect(results.length).toBeGreaterThanOrEqual(1);
+    expect(results).toHaveLength(1);
     expect(results[0].fact.content).toContain("hiking");
-    expect(results[0].rank).toBeDefined();
+    expect(typeof results[0].rank).toBe("number");
   });
 
   it("keywordSearch only returns active, is_latest facts", () => {

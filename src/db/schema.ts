@@ -269,7 +269,7 @@ function applyV4(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_facts_session ON facts(session_id);
     CREATE INDEX IF NOT EXISTS idx_fact_entities_entity ON fact_entities(entity_id);
     CREATE INDEX IF NOT EXISTS idx_entities_type ON entities(type);
-    CREATE INDEX IF NOT EXISTS idx_entities_canonical ON entities(canonical_name);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_entities_canonical_type ON entities(canonical_name, type);
     CREATE INDEX IF NOT EXISTS idx_entity_edges_from ON entity_edges(from_entity);
     CREATE INDEX IF NOT EXISTS idx_entity_edges_to ON entity_edges(to_entity);
   `);
