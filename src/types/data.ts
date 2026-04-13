@@ -1,6 +1,7 @@
 /**
  * Data model types — the shape of records stored and returned by OpenMemory.
  *
+ * DIKW here is an engineering abstraction (Ackoff 1989), not a memory-science model.
  * Organised by the DIKW hierarchy:
  *
  *   Data         SessionEvent    Raw interactions, uninterpreted, append-only
@@ -174,7 +175,7 @@ export interface SearchResult {
   source: Source | null;
 }
 
-/** Search response with metamemory signals for calling AIs. */
+/** Search response with retrieval quality signals for calling AIs. */
 export interface SearchResponse {
   results: SearchResult[];
   /** Estimated fraction of relevant knowledge surfaced (0.0–1.0). */
