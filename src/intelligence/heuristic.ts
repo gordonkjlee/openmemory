@@ -1,5 +1,5 @@
 /**
- * Heuristic intelligence provider (Tier 0).
+ * Heuristic intelligence provider.
  * Keyword/regex-based, zero LLM dependencies.
  * Quality is limited but cost is zero and it always works.
  */
@@ -29,9 +29,9 @@ export function normaliseForDedup(content: string): string {
 // ---------------------------------------------------------------------------
 
 // First match wins. Medical is first for safety (health information takes priority).
-// Known Tier 0 limitation: this produces false positives like "I prefer chatting
-// with my doctor" → medical. A scored classifier (rank all domains, tie-break by
-// margin) would be more robust. Defer until Tier 1 sampling is available.
+// Known limitation: first-match-wins produces false positives like "I prefer
+// chatting with my doctor" → medical. A scored classifier (rank all domains,
+// tie-break by margin) or an LLM classifier would be more robust.
 const DOMAIN_SIGNALS: Array<{ domain: string; patterns: RegExp[] }> = [
   {
     domain: "medical",
@@ -87,7 +87,7 @@ function classifyContent(content: string, domainHint: string | null): { domain: 
 // Entity extraction patterns
 // ---------------------------------------------------------------------------
 
-// Person entity patterns only. Place/org extraction is out of scope for Tier 0.
+// Person entity patterns only. Place/org extraction requires NER or more complex patterns.
 // "[Mm]y" (not the /i flag) handles sentence-initial "My partner Alice" without
 // making [A-Z][a-z]+ case-insensitive — otherwise the name group would greedily
 // swallow trailing words (e.g. "Maryna loves" instead of "Maryna").
@@ -257,7 +257,7 @@ export function createHeuristicProvider(): IntelligenceProvider {
               content: factContent,
               domain_hint: domain !== "general" ? domain : null,
             });
-            break; // One fact per event at Tier 0
+            break; // One fact per event for the heuristic provider
           }
         }
       }
@@ -265,9 +265,9 @@ export function createHeuristicProvider(): IntelligenceProvider {
       return extracted;
     },
 
-    // Known Tier 0 limitation: location-change supersession ("I moved to Berlin"
+    // Known limitation: location-change supersession ("I moved to Berlin"
     // should supersede "I live in London") is invisible here — no negation
-    // marker, minimal word overlap. Requires semantic reasoning (Tier 1+).
+    // marker, minimal word overlap. Requires semantic reasoning (LLM provider).
     async detectSupersession(newFact, existingFacts) {
       for (const existing of existingFacts) {
         if (existing.domain !== newFact.domain) continue;

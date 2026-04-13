@@ -41,12 +41,12 @@ export interface SessionSummary {
 
 /**
  * Intelligence provider — pluggable backend for consolidation intelligence.
- * Implementations: heuristic (Tier 0), sampling (Tier 1), api (Tier 2).
+ * Implementations: heuristic (keyword/regex), sampling (MCP client LLM), api (direct LLM call).
  */
 export interface IntelligenceProvider {
   /** Classify facts into domains/subdomains.
    *  sessionContext is optional — reserved for future providers that need
-   *  a conversation summary (Tier 1+). Tier 0 ignores it. */
+   *  a conversation summary (LLM-based providers). The heuristic provider ignores it. */
   classifyFacts(
     facts: SessionFact[],
     sessionContext?: string,

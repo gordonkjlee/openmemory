@@ -493,7 +493,7 @@ describe.skipIf(!canLoadSqlite)("consolidation pipeline", () => {
     });
 
     // Two new session facts both targeting the coffee prior with negation.
-    // No inline punctuation — the Tier 0 tokeniser splits on whitespace only,
+    // No inline punctuation — the heuristic tokeniser splits on whitespace only,
     // so "coffee," would be a different token from "coffee".
     insertSessionFact(db, {
       session_id: sessionId,

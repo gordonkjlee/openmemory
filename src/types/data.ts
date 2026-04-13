@@ -7,13 +7,13 @@
  *   Data         SessionEvent    Raw interactions, uninterpreted, append-only
  *   Information  SessionFact     LLM-extracted, tagged, awaiting integration
  *   Knowledge    Fact            Graduated, entity-linked, deduplicated, routed
- *   Wisdom       Inference       Applied judgement — hypotheses from patterns (Phase 3)
+ *   Wisdom       Inference       Applied judgement — hypotheses from patterns (not yet implemented)
  *
  * Each transformation is explicit:
  *   Data → Information    The calling LLM captures explicitly (capture_fact) or the server
  *                          extracts from events during consolidation (hybrid capture model)
  *   Information → Knowledge   Event-driven batch consolidation
- *   Knowledge → Wisdom        Inference pipeline (Phase 3)
+ *   Knowledge → Wisdom        Inference pipeline (not yet implemented)
  *
  * Session scopes the technical boundary (MCP connection).
  * Episodes (narrative boundaries) are discovered at consolidation, not declared here.
@@ -155,7 +155,7 @@ export interface Source {
   metadata: Record<string, unknown> | null;
 }
 
-/** DIKW: Wisdom — applied judgement. Hypotheses derived from patterns across facts (Phase 3). */
+/** DIKW: Wisdom — applied judgement. Hypotheses derived from patterns across facts (not yet implemented). */
 export interface Inference {
   id: string;
   hypothesis: string;

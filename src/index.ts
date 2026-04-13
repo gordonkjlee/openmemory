@@ -74,10 +74,10 @@ const factManager = createFactManager(db, sessionManager, { intelligence });
 factManager.registerTools(server);
 registerReadTools(server, db);
 
-// TODO(extraction-rollout): none of the registered tools (capture_fact,
+// TODO(event-logging): none of the registered tools (capture_fact,
 // consolidate, search_knowledge, etc.) are wrapped with withEventLogging, so
-// tool calls do not produce session_events. Phase B event extraction therefore
-// cannot observe our own tool activity. Before enabling extraction by default,
+// tool calls do not produce session_events. Event extraction therefore cannot
+// observe our own tool activity. Before enabling extraction by default,
 // refactor tool registration to accept an optional logging wrapper.
 
 // ---------------------------------------------------------------------------

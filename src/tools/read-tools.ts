@@ -79,7 +79,7 @@ export function registerReadTools(
     `Get the user's preferences.`,
     {
       // category parameter accepted but not used for filtering until a provider
-      // populates subdomains. Tier 0 heuristic always returns subdomain: null,
+      // populates subdomains. The heuristic provider always returns subdomain: null,
       // so filtering by category would always return zero results.
       category: z
         .string()
@@ -89,7 +89,7 @@ export function registerReadTools(
     (args) => {
       const facts = structuredSearch(db, {
         domain: "preferences",
-        // subdomain omitted: Tier 0 heuristic always returns null subdomains.
+        // subdomain omitted: heuristic provider always returns null subdomains.
         // Passing args.category here would silently return empty results.
       });
 

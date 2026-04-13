@@ -118,7 +118,7 @@ export async function consolidate(
     const sessionFactMap = new Map(sessionFacts.map((f) => [f.id, f]));
 
     // Step 1: Classify domains
-    // sessionContext omitted — reserved for Tier 1+ providers.
+    // sessionContext omitted — reserved for LLM-based providers.
     const classified = await intelligence.classifyFacts(sessionFacts);
 
     // Step 2: Extract entities holistically
@@ -179,23 +179,23 @@ export async function consolidate(
         content: cf.content,
         domain: cf.domain,
         subdomain: cf.subdomain,
-        // TODO(confidence-modulation): design specifies source boost (+0.1 for
-        // dual-sourced facts), corroboration boost (+0.1 for independent
-        // corroboration), and schema consistency boost (+0.05). Currently
-        // confidence passes through unmodified from capture time. Implement
-        // when Tier 1 providers can assess source quality.
+        // TODO(confidence-modulation): confidence passes through unmodified from
+        // capture time. Future: source boost (+0.1 for dual-sourced facts),
+        // corroboration boost (+0.1 for independent corroboration), schema
+        // consistency boost (+0.05). Requires an LLM-based provider to assess
+        // source quality.
         confidence: sessionFact.confidence ?? DEFAULT_CONFIDENCE,
         importance: sessionFact.importance ?? DEFAULT_IMPORTANCE,
       });
     }
 
     // Step 4: Detect supersessions (outside transaction — may involve LLM)
-    // Known Tier 0 limitation: supersession only checks new facts against
-    // EXISTING graduated facts (from the domainCache populated above). Two
-    // facts in the SAME batch cannot supersede each other. If a user captures
-    // "I prefer coffee" then "I no longer prefer coffee" in one session, both
-    // graduate as active facts. Fix in Tier 1 by adding an intra-batch
-    // supersession pass over toGraduate before Phase D.
+    // Known limitation: supersession only checks new facts against EXISTING
+    // graduated facts (from the domainCache populated above). Two facts in the
+    // SAME batch cannot supersede each other. If a user captures "I prefer
+    // coffee" then "I no longer prefer coffee" in one session, both graduate
+    // as active facts. Fix: add an intra-batch supersession pass over
+    // toGraduate before the write transaction.
     const supersessionMap = new Map<string, string>(); // sessionFactId → existingFactId to supersede
     const alreadySuperseded = new Set<string>(); // existingFactId already claimed by another candidate
     // Track supersession intents that were dropped because another candidate
@@ -355,7 +355,7 @@ export async function consolidate(
     phaseDCommitted = true;
 
     // Release lock before summary generation. summarise() is async on the
-    // IntelligenceProvider interface — Tier 1+ providers make LLM calls that
+    // IntelligenceProvider interface — LLM-based providers make calls that
     // should not hold the advisory lock. If the process crashes between release
     // and the summary UPDATE, the consolidation record has summary=NULL, which
     // is acceptable (all facts are already graduated).
@@ -429,7 +429,7 @@ async function extractFactsFromEvents(
   // Get the highest event sequence already processed by inferred extraction.
   // Filter by source_origin='inferred' — auto-linked contextual sources from
   // explicit captures must not advance the watermark.
-  // TODO(extraction-rollout): watermark stalls if a run extracts no facts.
+  // TODO(extraction): watermark stalls if a run extracts no facts.
   // Proper fix requires an extraction_watermarks table tracking processed events
   // independent of whether any facts were emitted.
   const watermarkRow = db
@@ -478,11 +478,11 @@ async function extractFactsFromEvents(
   const extracted = await intelligence.extractFactsFromEvents(truncated, contextEvents);
 
   // Write inferred session_facts.
-  // TODO(extraction-rollout): all extracted facts are attributed to the first event's
+  // TODO(extraction): all extracted facts are attributed to the first event's
   // mcp_session_id. Multi-session extraction needs per-event attribution (requires
   // extractFactsFromEvents to return source_event_ids alongside each fact).
-  // TODO(extraction-rollout): substring-based source linking over-attributes when the
-  // same phrase appears in multiple events, and UNDER-attributes for Tier 1+ providers
+  // TODO(extraction): substring-based source linking over-attributes when the
+  // same phrase appears in multiple events, and UNDER-attributes for LLM-based providers
   // that paraphrase (event says "yeah I can't eat penicillin", extraction returns
   // "allergic to penicillin" → zero substring matches → unlinked orphan fact).
   // Fix: add source_event_ids to the extractFactsFromEvents return type.
