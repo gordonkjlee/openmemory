@@ -4,14 +4,9 @@
  * Quality is limited but cost is zero and it always works.
  */
 
-import type { SessionFact, SessionEvent, Fact } from "../types/data.js";
 import type {
   IntelligenceProvider,
-  ClassifiedFact,
   ExtractedEntity,
-  SupersessionCandidate,
-  ReconcileDecision,
-  SessionSummary,
 } from "./types.js";
 
 // ---------------------------------------------------------------------------

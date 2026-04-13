@@ -173,7 +173,7 @@ export function registerReadTools(
 
       // Check if the topic matches an entity
       const entity = findEntity(db, args.topic);
-      let connectedFacts: Array<{
+      const connectedFacts: Array<{
         entity_name: string;
         relationship: string;
         facts: ReturnType<typeof getFactsByEntity>;
