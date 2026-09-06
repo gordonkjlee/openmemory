@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.30.0](https://github.com/gordonkjlee/facthouse/compare/v0.29.1...v0.30.0) (2026-09-06)
+
+
+### Features
+
+* **brand:** replace mascot with constellation house ([#262](https://github.com/gordonkjlee/facthouse/issues/262)) ([e730bfe](https://github.com/gordonkjlee/facthouse/commit/e730bfeda3c15f9d6b1b4ba42bccfc238eb6d5a9))
+
+
+### Bug Fixes
+
+* **cli:** drop TTY residue on init --web and offer historic after it ([#260](https://github.com/gordonkjlee/facthouse/issues/260)) ([d923792](https://github.com/gordonkjlee/facthouse/commit/d92379217982afcd6d2310117b4d0045c38a2eab))
+
 ## [0.29.1](https://github.com/gordonkjlee/facthouse/compare/v0.29.0...v0.29.1) (2026-09-05)
 
 
