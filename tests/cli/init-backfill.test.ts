@@ -3,6 +3,7 @@ import {
   offerInitBackfill,
   parseHistoricExtract,
   shouldOfferInitBackfill,
+  stdinCanAskHistoric,
 } from "../../src/cli/init-backfill.js";
 import { INIT_PROMPTS, INIT_SYNTHETIC } from "../../src/cli/init-knobs.js";
 import type { InitIo } from "../../src/cli/init-wizard.js";
@@ -58,6 +59,39 @@ describe("shouldOfferInitBackfill", () => {
         ttyWalk: true,
         wroteConfig: true,
         sources: [],
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("stdinCanAskHistoric", () => {
+  it("is the TTY wizard, or --web after the page if stdin is a TTY", () => {
+    expect(
+      stdinCanAskHistoric({
+        usedTtyWizard: true,
+        web: false,
+        stdinIsTTY: true,
+      }),
+    ).toBe(true);
+    expect(
+      stdinCanAskHistoric({
+        usedTtyWizard: false,
+        web: true,
+        stdinIsTTY: true,
+      }),
+    ).toBe(true);
+    expect(
+      stdinCanAskHistoric({
+        usedTtyWizard: false,
+        web: true,
+        stdinIsTTY: false,
+      }),
+    ).toBe(false);
+    expect(
+      stdinCanAskHistoric({
+        usedTtyWizard: false,
+        web: false,
+        stdinIsTTY: true,
       }),
     ).toBe(false);
   });

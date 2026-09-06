@@ -474,10 +474,13 @@ const STORE_DIR =
   "The store is this directory. Clients share it by using the same path. " +
   "A second store is a second directory, not a second install.";
 
+const SETUP_LEAD = "Facthouse setup.";
+
 export const INIT_PROMPTS = {
   storeDir: STORE_DIR,
   intro:
-    "Facthouse setup. Press Enter to accept the default in [brackets].\n" +
+    SETUP_LEAD +
+    " Press Enter to accept the default in [brackets].\n" +
     STORE_DIR,
   dataDir: (shown: string) => `Data directory [${shown}]: `,
   capture:
@@ -498,7 +501,7 @@ export const INIT_PROMPTS = {
   cwdSkip:
     "A project folder is required to add a source. Leaving copy off (sources stays empty).",
   notAPath:
-    "That is not a directory path. Use C:/..., ~/..., or ./... (or Enter for the default).",
+    "That is not a directory path. Use C:/..., ~/..., or ./... (or leave it blank for the default).",
   embedding:
     "Semantic search  [off]\n" +
     '  off     keyword only — "shellfish" finds a shellfish fact, "food" does not\n' +

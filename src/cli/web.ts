@@ -283,7 +283,7 @@ export function renderInitWebHtml(opts: {
     .join("\n  ");
   const inner = `
 <h1>Facthouse setup</h1>
-<p class="hint">${escapeHtml(INIT_PROMPTS.intro)}</p>
+<p class="hint">${escapeHtml(INIT_PROMPTS.storeDir)}</p>
 ${opts.error && !opts.field ? `<p class="warn">${escapeHtml(opts.error)}</p>` : ""}
 <form method="post" action="?token=${encodeURIComponent(opts.token)}">
   ${fieldWarn(opts.field, "dataDir", opts.error ?? "")}
@@ -291,8 +291,7 @@ ${opts.error && !opts.field ? `<p class="warn">${escapeHtml(opts.error)}</p>` : 
     <input name="dataDir" value="${escapeHtml(dataDir)}" autocomplete="off">
   </label>
   <fieldset>
-    <legend>How conversations get in</legend>
-    <p class="hint">${escapeHtml(INIT_PROMPTS.capture)}</p>
+    <legend>${escapeHtml(promptLabel(INIT_PROMPTS.capture))}</legend>
     ${fieldWarn(opts.field, "capture", opts.error ?? "")}
     <label class="choice"><input type="radio" name="capture" value="copy"${capture === "copy" ? " checked" : ""}> copy — session logs on disk</label>
     <label class="choice"><input type="radio" name="capture" value="record"${capture === "record" ? " checked" : ""}> record — the assistant saves facts as you talk</label>
