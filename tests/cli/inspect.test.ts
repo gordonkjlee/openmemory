@@ -191,6 +191,8 @@ describe("inspect graph HTML", () => {
     expect(html).toContain("#c4a35a");
     expect(html).toContain("rel=\"icon\"");
     expect(html).toContain("brand-mark");
+    expect(html).toContain('cx="16.00"');
+    expect(html).toContain('cx="6.20"');
   });
 
   it("Spend includes a routing card that copies JSON and does not save", async () => {
