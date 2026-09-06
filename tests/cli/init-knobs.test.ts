@@ -230,6 +230,8 @@ describe("init knobs — one definition", () => {
       "httpExtractOnFail",
     ]);
     expect(INIT_PROMPTS.intro).toContain(INIT_PROMPTS.storeDir);
+    expect(INIT_PROMPTS.notAPath).toMatch(/leave it blank/);
+    expect(INIT_PROMPTS.notAPath).not.toMatch(/\bEnter\b/);
     expect(INIT_PROMPTS.storeDir).toMatch(/same path/i);
     expect(INIT_PROMPTS.storeDir).toMatch(/second directory/i);
     expect(INIT_PROMPTS.storeDir).not.toMatch(/\bmemory\b/i);

@@ -1,8 +1,9 @@
 /**
- * After a TTY copy init: offer copy, then extract + integrate.
- *
- * Not --yes, not record, not --web. Does not start the MCP server.
- * Copy fills D only (no model). Extract and integrate spend model calls.
+ * After a copy init that can still ask on stdin: offer copy, then extract +
+ * integrate. TTY wizard, or `--web` once the page has closed if stdin is a
+ * TTY. Not --yes, not record, not a loopback POST. Does not start the MCP
+ * server. Copy fills D only (no model). Extract and integrate spend model
+ * calls.
  */
 
 import { storeHasNamedSources } from "../tools/capture-fact-description.js";
@@ -17,6 +18,15 @@ export function shouldOfferInitBackfill(opts: {
   return (
     opts.ttyWalk && opts.wroteConfig && storeHasNamedSources(opts.sources)
   );
+}
+
+/** TTY wizard, or `--web` after the page closes if stdin can still ask. */
+export function stdinCanAskHistoric(opts: {
+  usedTtyWizard: boolean;
+  web: boolean;
+  stdinIsTTY: boolean;
+}): boolean {
+  return opts.usedTtyWizard || (opts.web && opts.stdinIsTTY);
 }
 
 export type HistoricExtractChoice =

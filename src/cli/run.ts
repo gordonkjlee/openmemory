@@ -35,6 +35,7 @@ import { INIT_PROMPTS } from "./init-knobs.js";
 import {
   offerInitBackfill,
   shouldOfferInitBackfill,
+  stdinCanAskHistoric,
 } from "./init-backfill.js";
 import { runSettings } from "./settings.js";
 import { collectInitWebAnswers } from "./web.js";
@@ -316,55 +317,76 @@ async function runInit() {
 
   const written = loadConfig(result.dataDir);
 
-  if (rl) {
-    try {
-      if (
-        shouldOfferInitBackfill({
-          ttyWalk: true,
-          wroteConfig: result.wroteConfig,
-          sources: written.sources,
-        })
-      ) {
-        const provider = resolveProviderType(written.intelligence.provider);
-        const io = bindInitIo(rl);
-        await offerInitBackfill(io, result.dataDir, {
-          providerIsHeuristic: provider === "heuristic",
-          copy: async (dir) => {
-            const cfg = loadConfig(dir);
-            return withDb(dir, (db) => copySources(db, cfg.sources));
-          },
-          unextracted: (dir) => withDb(dir, (db) => unexaminedEventCount(db)),
-          consolidate: async (dir, opts) => {
-            const r = await consolidateStore(
-              dir,
-              { copy: false, extract: true, integrate: true },
-              {
-                print: false,
-                extractLimit: opts.extractLimit,
-                extractSince: opts.extractSince,
-                timeoutMs: CLI_HISTORIC_TIMEOUT_MS,
-                onExtractProgress: (done, total) => {
-                  io.write(INIT_PROMPTS.extractProgress(done, total));
-                },
-                onExtractTimeout: () => {
-                  io.write(
-                    INIT_PROMPTS.extractTimedOut(
-                      Math.round(CLI_HISTORIC_TIMEOUT_MS / 1000),
-                    ),
-                  );
-                },
-              },
-            );
-            return r
-              ? { factsIntegrated: r.factsIntegrated, eventsRemaining: r.eventsRemaining }
-              : undefined;
-          },
-        });
-      }
-    } finally {
-      rl.removeListener("SIGINT", onSigint);
-      rl.close();
+  const canAskHistoric = stdinCanAskHistoric({
+    usedTtyWizard: Boolean(rl),
+    web,
+    stdinIsTTY: Boolean(process.stdin.isTTY),
+  });
+  if (
+    canAskHistoric &&
+    shouldOfferInitBackfill({
+      ttyWalk: true,
+      wroteConfig: result.wroteConfig,
+      sources: written.sources,
+    })
+  ) {
+    const openedForHistoric = !rl;
+    if (!rl) {
+      rl = createInterface({
+        input: process.stdin,
+        output: process.stdout,
+        terminal: true,
+      });
+      rl.on("SIGINT", onSigint);
     }
+    try {
+      const provider = resolveProviderType(written.intelligence.provider);
+      const io = bindInitIo(rl);
+      await offerInitBackfill(io, result.dataDir, {
+        providerIsHeuristic: provider === "heuristic",
+        copy: async (dir) => {
+          const cfg = loadConfig(dir);
+          return withDb(dir, (db) => copySources(db, cfg.sources));
+        },
+        unextracted: (dir) => withDb(dir, (db) => unexaminedEventCount(db)),
+        consolidate: async (dir, opts) => {
+          const r = await consolidateStore(
+            dir,
+            { copy: false, extract: true, integrate: true },
+            {
+              print: false,
+              extractLimit: opts.extractLimit,
+              extractSince: opts.extractSince,
+              timeoutMs: CLI_HISTORIC_TIMEOUT_MS,
+              onExtractProgress: (done, total) => {
+                io.write(INIT_PROMPTS.extractProgress(done, total));
+              },
+              onExtractTimeout: () => {
+                io.write(
+                  INIT_PROMPTS.extractTimedOut(
+                    Math.round(CLI_HISTORIC_TIMEOUT_MS / 1000),
+                  ),
+                );
+              },
+            },
+          );
+          return r
+            ? { factsIntegrated: r.factsIntegrated, eventsRemaining: r.eventsRemaining }
+            : undefined;
+        },
+      });
+    } finally {
+      if (openedForHistoric) {
+        rl.removeListener("SIGINT", onSigint);
+        rl.close();
+        rl = undefined;
+      }
+    }
+  }
+
+  if (rl) {
+    rl.removeListener("SIGINT", onSigint);
+    rl.close();
   }
 
   const captureLines = appendCaptureRecipe(written.sources, {

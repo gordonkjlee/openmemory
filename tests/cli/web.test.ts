@@ -180,6 +180,9 @@ describe("web hang-safety", () => {
     expect(html).toMatch(/record/);
     expect(html).toMatch(/box-sizing:\s*border-box/);
     expect(html).toContain(`<title>${INIT_WEB_TITLE}</title>`);
+    expect(html).toContain(INIT_PROMPTS.storeDir);
+    expect(html).not.toMatch(/Press Enter/);
+    expect(html).not.toMatch(/\[copy\]:/);
     expect(html).not.toMatch(/Idle silence/);
     expect(html).not.toMatch(/name="cliTimeoutMs"/);
     expect(html).not.toMatch(/name="httpExtractOnFail"/);
