@@ -2,13 +2,13 @@
 
 <img src="brand/mark.png" width="128" align="right" alt="Facthouse">
 
-Facthouse is a local memory engine for AI tools. Most “memory” products index chat logs. Facthouse takes agent activity - messages, tool use, and other MCP traffic - and applies neuroscience-inspired consolidation so it moves through **Data** (what happened in the session) → **Information** (extracted facts) → **Knowledge** (integrated beliefs on an entity graph). During this process, Facthouse links entities, drops duplicates, reconciles conflicts, and supersedes what is out of date. Vector embeddings add optional semantic search on top of that graph. The store is a SQLite file on your disk.
+A local memory engine any AI tool can use.
+
+Not Mem0's hosted OpenMemory MCP at mcp.mem0.ai.
 
 [![npm](https://img.shields.io/npm/v/@facthouse/mcp.svg)](https://www.npmjs.com/package/@facthouse/mcp)
 [![CI](https://github.com/gordonkjlee/facthouse/actions/workflows/ci.yml/badge.svg)](https://github.com/gordonkjlee/facthouse/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/gordonkjlee/facthouse)](LICENSE)
-
-It records, stores, and retrieves structured knowledge. Domain routing, entity extraction, deduplication, and supersession run in the server. Exposed as an MCP server.
 
 ## Quick Start
 
@@ -29,7 +29,31 @@ Press Enter to accept each default (copy = Claude Code or Cursor session logs on
 
 In the client, state something durable in ordinary conversation — there is no remember command.
 
-That is the store. Transcript file (Claude Code or Cursor): next section. CLI: [below](#cli).
+Ask it back in the next session, or `facthouse search`. That is the store.
+
+Copy from Claude Code or Cursor logs, or record from any MCP client: [How conversations get in](#how-conversations-get-in). Replay: [facthouse.dev/demo.html](https://facthouse.dev/demo.html). CLI: [below](#cli).
+
+## What you get
+
+- **Local SQLite.** Optional Postgres. Isolation is the directory, not a column.
+- **Entity graph.** People, organisations, projects, places, products — extracted, typed and linked.
+- **Hybrid search.** BM25 + structured domain + entity-graph paths, merged via Reciprocal Rank Fusion. An embedding provider adds meaning as a fourth list; off by default.
+- **In-session memory.** `get_session_context` is the same briefing as `memory://briefing`. Tools-only clients should call it at session start.
+- **Immutable history.** Facts are never deleted, only superseded.
+
+## How it works
+
+One SQLite database. Three tables in it, not three databases: **Data** (what happened in the session) → **Information** (extracted facts) → **Knowledge** (integrated beliefs).
+
+- **D** (`session_events`) — what was said (copied transcripts, or what the assistant records)
+- **I** (`session_facts`) — what was just extracted, or `capture_fact`
+- **K** (`facts`) — integrated knowledge
+
+FTS5 (words) and optional embeddings (meaning) are indexes of **K**. They are not a second store. Semantic search is off unless you turn it on: `search "shellfish"` finds a shellfish fact, `search "food"` does not, until you choose an embedding model — a model is an opinion about what “similar” means.
+
+Two speeds. **Extract** turns new transcript lines into self-contained facts. **Integrate** fits them into what the store already knows: domains, entities, duplicates, contradictions, the graph. `consolidate` runs copy, extract, and integrate together — in the server at session start and at compaction, or by hand from the CLI. Extract is capped at 50 lines per run, so a first backfill is never spent on the lot; each automatic run extracts facts from the oldest 50 lines. The MCP server copies the raw log on a call; it does not extract then. Consolidation does not invent a sentence nobody said.
+
+Storage needs Node. Intelligence needs a language model. By default that is the [Claude Code CLI](https://github.com/anthropics/claude-code) on your existing subscription. Without it, consolidation falls back to a built-in heuristic that **does not extract facts from transcripts**. `capture_fact` still stores facts, with no entities and no domain routing.
 
 ## How conversations get in
 
@@ -51,33 +75,9 @@ Pick copy, set cwd. Init asks whether to copy existing logs, then whether to ext
 
 Compact (optional): `facthouse notify compaction` — not a turn-end Stop hook.
 
-Replay: [facthouse.dev/demo.html](https://facthouse.dev/demo.html).
-
-## What you get
-
-- **Local SQLite.** Optional Postgres. Isolation is the directory, not a column.
-- **Entity graph.** People, organisations, projects, places, products — extracted, typed and linked.
-- **Hybrid search.** BM25 + structured domain + entity-graph paths, merged via Reciprocal Rank Fusion. An embedding provider adds meaning as a fourth list; off by default.
-- **In-session memory.** `get_session_context` is the same briefing as `memory://briefing`. Tools-only clients should call it at session start.
-- **Immutable history.** Facts are never deleted, only superseded.
-
-## How it works
-
-One SQLite database. Three tables in it, not three databases:
-
-- **D** (`session_events`) — what was said (copied transcripts, or what the assistant records)
-- **I** (`session_facts`) — what was just extracted, or `capture_fact`
-- **K** (`facts`) — integrated knowledge
-
-FTS5 (words) and optional embeddings (meaning) are indexes of **K**. They are not a second store. Semantic search is off unless you turn it on: `search "shellfish"` finds a shellfish fact, `search "food"` does not, until you choose an embedding model — a model is an opinion about what “similar” means.
-
-Two speeds. **Extract** turns new transcript lines into self-contained facts. **Integrate** fits them into what the store already knows: domains, entities, duplicates, contradictions, the graph. `consolidate` runs copy, extract, and integrate together — in the server at session start and at compaction, or by hand from the CLI. Extract is capped at 50 lines per run, so a first backfill is never spent on the lot; each automatic run extracts facts from the oldest 50 lines. The MCP server copies the raw log on a call; it does not extract then. Consolidation does not invent a sentence nobody said.
-
-Storage needs Node. Intelligence needs a language model. By default that is the [Claude Code CLI](https://github.com/anthropics/claude-code) on your existing subscription. Without it, consolidation falls back to a built-in heuristic that **does not extract facts from transcripts**. `capture_fact` still stores facts, with no entities and no domain routing.
-
 ## MCP
 
-Works with Claude Code, Claude Desktop, and any MCP-compatible tool. Data is stored at `~/.facthouse` by default. That one directory is the whole install. To use a different path, add `"env": { "FACTHOUSE_DATA": "/absolute/path" }` to the MCP snippet. JSON accepts forward slashes on Windows. FACTHOUSE_DATA on an MCP snippet applies only to that server process. A terminal facthouse command needs --data, or FACTHOUSE_DATA in the environment that shell inherits. Hooks do not see mcp.json env.
+Works with any MCP-compatible tool. Default store: `~/.facthouse`. A different path is `"env": { "FACTHOUSE_DATA": "/absolute/path" }` on the MCP snippet. JSON accepts forward slashes on Windows.
 
 Cursor consumes tools but not resources until a later adapter exists — `search_knowledge` and `get_entity` still work there; call `get_session_context` at session start.
 
@@ -296,7 +296,7 @@ A non-default data directory prints a distinct MCP server name so two stores can
 ```
 <!-- x-release-please-end -->
 
-Point each store's `sources.cwd` (or hook `--data`) at that store only. Two directories do not isolate anything if both copy the same home. FACTHOUSE_DATA on an MCP snippet applies only to that server process. A terminal facthouse command needs --data, or FACTHOUSE_DATA in the environment that shell inherits. Hooks do not see mcp.json env.
+Point each store's `sources.cwd` (or hook `--data`) at that store only. Two directories do not isolate anything if both copy the same home.
 
 ### Postgres (optional)
 

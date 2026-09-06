@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Facthouse — one-minute replay</title>
-  <meta name="description" content="A scripted replay of how Facthouse stores a fact and finds it again. Synthetic names only.">
+  <title>Facthouse — a fact lands, then it changes</title>
+  <meta name="description" content="A scripted replay: store a preference, retrieve it, then supersede it. Synthetic names only.">
   <link rel="canonical" href="https://facthouse.dev/demo.html">
   <link rel="icon" href="assets/logo.png" type="image/png">
   <style>
@@ -55,6 +55,12 @@
       padding: 0.5rem 0.95rem; border-radius: 0.3rem; font-weight: 600; cursor: pointer;
     }
     button.ghost { background: transparent; color: var(--slate); border: 1px solid var(--line); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    a.cta {
+      display: inline-block; margin-top: 0.85rem;
+      background: var(--ochre); color: var(--snow); text-decoration: none;
+      padding: 0.5rem 0.95rem; border-radius: 0.3rem; font-weight: 600;
+    }
     .progress { color: var(--slate); font-size: 0.85rem; margin-top: 0.75rem; }
     footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--slate); font-size: 0.85rem; }
     footer a { color: var(--slate); }
@@ -73,7 +79,7 @@
         <a href="https://www.npmjs.com/package/@facthouse/mcp">npm</a>
       </nav>
     </header>
-    <h1>One minute, no install</h1>
+    <h1>A fact lands, then it changes</h1>
     <p class="lede">A taped session. Names are invented. Nothing here is a live store.</p>
     <div class="stage" id="stage"></div>
     <menu>
@@ -90,22 +96,28 @@
       {
         who: "Alex, in chat",
         body: "I prefer dark mode in every editor.",
-        callout: "Two ways in. Copy: session logs on disk (Claude Code or Cursor). Record: the assistant saves facts as you talk. This tape shows record."
-      },
-      {
-        who: "The assistant",
-        body: "Stored. There is no remember command — a durable sentence in ordinary conversation is enough.",
-        callout: "On a record store, capture_fact is how knowledge gets in. On a copy store it is a correction, not a second write of the chat."
+        callout: "A durable sentence in ordinary conversation is enough. There is no remember command."
       },
       {
         who: "Later, Alex",
         body: "What editor theme do I prefer?",
-        callout: "Search looks at integrated facts first. Pending captures are listed separately until consolidate runs."
+        callout: "Search looks at integrated facts, not the chat log."
       },
       {
         who: "Search",
         body: "<span class=\"result\">results: “Alex prefers dark mode in every editor.”</span>",
-        callout: "Copy brings in what was said, extract turns it into facts, integrate fits them in: domains, entities, duplicates, contradictions. Still one SQLite database."
+        callout: "The preference is knowledge now. It will come back in the next session."
+      },
+      {
+        who: "Alex, months later",
+        body: "I use light mode now. Dark mode was a mistake.",
+        callout: "A later sentence can replace an earlier one. The old fact is not deleted."
+      },
+      {
+        who: "Search",
+        body: "<span class=\"result\">current: “Alex prefers light mode in every editor.”<br>superseded: “Alex prefers dark mode in every editor.”</span>",
+        callout: "Facts are superseded, not deleted. That is the difference from a chat-log index.",
+        cta: true
       }
     ];
     var i = 0;
@@ -115,10 +127,20 @@
     var back = document.getElementById("back");
     function show() {
       var s = STEPS[i];
-      stage.innerHTML = "<div class=\"who\">" + s.who + "</div><p class=\"bubble\">" + s.body + "</p><p class=\"callout\">" + s.callout + "</p>";
+      var html = "<div class=\"who\">" + s.who + "</div><p class=\"bubble\">" + s.body + "</p><p class=\"callout\">" + s.callout + "</p>";
+      if (s.cta) {
+        html += "<p><a class=\"cta\" href=\"./#quick-start\">Install @facthouse/mcp</a></p>";
+      }
+      stage.innerHTML = html;
       progress.textContent = (i + 1) + " / " + STEPS.length;
       back.disabled = i === 0;
-      next.textContent = i === STEPS.length - 1 ? "Replay" : "Next";
+      if (i === STEPS.length - 1) {
+        next.textContent = "Replay";
+        next.className = "ghost";
+      } else {
+        next.textContent = "Next";
+        next.className = "";
+      }
     }
     next.addEventListener("click", function () {
       i = i === STEPS.length - 1 ? 0 : i + 1;
