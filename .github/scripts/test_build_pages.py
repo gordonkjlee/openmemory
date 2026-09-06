@@ -89,6 +89,8 @@ def test_builds_site_from_readme(tmp_path: Path):
     assert "Alex" in demo
     assert "superseded" in demo
     assert "Install @facthouse/mcp" in demo
+    assert "index.html#quick-start" in demo
+    assert 'id="quick-start"' in index
     assert "node:sqlite" not in demo
 
     assert (site / "CNAME").read_text(encoding="utf-8") == "facthouse.dev\n"

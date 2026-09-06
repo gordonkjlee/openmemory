@@ -10,6 +10,8 @@ Not Mem0's hosted OpenMemory MCP at mcp.mem0.ai.
 [![CI](https://github.com/gordonkjlee/facthouse/actions/workflows/ci.yml/badge.svg)](https://github.com/gordonkjlee/facthouse/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/gordonkjlee/facthouse)](LICENSE)
 
+<a id="quick-start"></a>
+
 ## Quick Start
 
 Needs Node 22.5 or 24+.
