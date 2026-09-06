@@ -92,6 +92,8 @@ def test_builds_site_from_readme(tmp_path: Path):
     )
     assert 'src="assets/logo.png"' in index
     assert "brand/mascot-right.png" not in index
+    assert 'property="og:image" content="https://facthouse.dev/assets/logo.png"' in index
+    assert '"image": "https://facthouse.dev/assets/logo.png"' in index
     assert sorted(p.name for p in site.glob("*.html")) == ["demo.html", "index.html"]
     demo = (site / "demo.html").read_text(encoding="utf-8")
     assert "Alex" in demo

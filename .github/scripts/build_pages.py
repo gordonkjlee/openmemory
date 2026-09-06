@@ -52,7 +52,7 @@ PAGES = (
 )
 
 ASSETS = (
-    ("brand/mascot-right.png", "assets/logo.png"),
+    ("brand/mark.png", "assets/logo.png"),
 )
 
 STATIC = (
@@ -223,6 +223,7 @@ def software_application_ld() -> dict:
         "url": SITE_ORIGIN,
         "description": listing_description(),
         "sameAs": [GITHUB, NPM],
+        "image": f"{SITE_ORIGIN}/assets/logo.png",
         "codeRepository": GITHUB,
         "license": "MIT",
         "author": {"@type": "Person", "name": "Gordon Lee"},
